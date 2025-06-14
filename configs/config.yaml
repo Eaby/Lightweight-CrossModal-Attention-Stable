@@ -1,0 +1,44 @@
+project_name: Lightweight Cross-Modal Attention
+
+# Device management
+preferred_device: null   # null means auto-select
+seed: 42
+
+# Datasets
+datasets_path: ./datasets/
+coco_annotations: coco_subset/annotations/captions_train2017.json
+coco_val_annotations: coco_subset/annotations/captions_val2017.json
+vqa_annotations: vqa2/v2_mscoco_train2014_annotations.json
+vqa_questions: vqa2/v2_OpenEnded_mscoco_train2014_questions.json
+nocaps_json: nocaps/nocaps_test_public.json
+flickr_csv: flickr30k_images_andCaptions/flickr30k_captions.csv
+
+# Model hyperparameters
+rank_k: 32
+input_dim: 512
+
+# Training hyperparameters
+epochs: 10
+learning_rate: 0.00005
+batch_size: 32
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

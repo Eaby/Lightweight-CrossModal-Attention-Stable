@@ -1,0 +1,46 @@
+# Ignore dataset folders (large files)
+datasets/
+results/
+logs/
+*.pth
+*.ckpt
+*.npy
+*.csv
+*.zip
+*.tgz
+*.tar.gz
+
+# Ignore notebooks checkpoints
+.ipynb_checkpoints/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore coco-caption internal git repo
+coco-caption/.git/
+
+# Ignore VSCode and editor configs
+.vscode/
+.idea/
+
+# Ignore environment files
+.env
+*.env
+.envrc
+
+# Jupyter Notebook Kernel metadata
+*.ipynb-kernel.json
+
+# General backup files
+*~
+*.bak
+
+# Ignore huggingface cache
+~/.cache/huggingface/
