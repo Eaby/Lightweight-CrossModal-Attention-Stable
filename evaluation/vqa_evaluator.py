@@ -1,6 +1,8 @@
 import json
 import os
 from sklearn.metrics import accuracy_score
+from collections import Counter
+from tqdm import tqdm
 
 class VQAEvaluator:
     def __init__(self, ground_truth_path, predictions_path, save_dir):
@@ -16,15 +18,34 @@ class VQAEvaluator:
             predictions = json.load(f)
         return ground_truth, predictions
 
+    def majority_vote(self, answers):
+        counter = Counter(answers)
+        return counter.most_common(1)[0][0]
+
     def evaluate(self):
         ground_truth, predictions = self.load_data()
 
-        y_true = [ground_truth[qid] for qid in predictions]
-        y_pred = [predictions[qid] for qid in predictions]
+        # Normalize keys
+        gt_keys = set(ground_truth.keys())
+        pred_keys = set(predictions.keys())
+        common_keys = gt_keys & pred_keys
+
+        y_true = []
+        y_pred = []
+
+        for key in tqdm(common_keys, desc="Evaluating VQA Samples"):
+            gt_answers = ground_truth[key]  # list of multiple ground-truth answers
+            majority_gt = self.majority_vote(gt_answers)
+            pred_answer = predictions[key]
+
+            y_true.append(majority_gt.strip().lower())
+            y_pred.append(pred_answer.strip().lower())
 
         acc = accuracy_score(y_true, y_pred)
-        with open(os.path.join(self.save_dir, "vqa_results.json"), "w") as f:
-            json.dump({"VQA Accuracy": acc}, f, indent=4)
 
-        print({"VQA Accuracy": acc})
+        results = {"VQA Accuracy": acc}
+        with open(os.path.join(self.save_dir, "vqa_results.json"), "w") as f:
+            json.dump(results, f, indent=4)
+
+        print(results)
 

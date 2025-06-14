@@ -1,76 +1,47 @@
-import json
 import os
-import nltk
-from tqdm import tqdm
-from nltk.translate.bleu_score import corpus_bleu, SmoothingFunction
-from nltk.translate.meteor_score import meteor_score
-from nltk.tokenize import word_tokenize
+from evaluation.captioning_evaluator import CaptioningEvaluator
+from evaluation.retrieval_evaluator import RetrievalEvaluator
+from evaluation.vqa_evaluator import VQAEvaluator
+from evaluation.efficiency_evaluator import EfficiencyEvaluator
+from models.multimodal_model import CrossModalModel
+import torch
+import yaml
+from utils.gpu_manager import GPUMemoryManager
 
-# Download required nltk resources
-nltk.download('wordnet')
-nltk.download('punkt')
-nltk.download('omw-1.4')
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# Paths
-ground_truth_path = "./datasets/nocaps/ground_truth_coco_val2017.json"
-generated_captions_path = "./results/generated_captions_coco_val2017.json"
-save_dir = "./results/captioning/"
-os.makedirs(save_dir, exist_ok=True)
+# Load config
+with open('./configs/config.yaml', 'r') as f:
+    config = yaml.safe_load(f)
 
-# Load data
-with open(ground_truth_path) as f:
-    ground_truth = json.load(f)
-with open(generated_captions_path) as f:
-    generated = json.load(f)
+# Load device
+gpu_manager = GPUMemoryManager(preferred_device=None)
+device = gpu_manager.get_device()
 
-# Normalization functions
-def normalize_generated_key(key):
-    return key.replace("COCO_val2017_", "").replace(".jpg", "")
+# Load trained model
+model = CrossModalModel(device=device, rank_k=config['rank_k']).to(device)
+model.load_state_dict(torch.load("./results/model.pth"))
+model.eval()
 
-def normalize_ground_truth_key(key):
-    return key.zfill(12)
+# Captioning
+caption_eval = CaptioningEvaluator(
+    ground_truth_path="./datasets/nocaps/ground_truth_coco_val2017.json",
+    generated_captions_path="./results/generated_captions_coco_val2017.json",
+    save_dir="./results/captioning/"
+)
+caption_eval.evaluate()
 
-# Apply normalization
-gen_normalized = {normalize_generated_key(k): v for k, v in generated.items()}
-gt_normalized = {normalize_ground_truth_key(k): v for k, v in ground_truth.items()}
+# VQA
+vqa_eval = VQAEvaluator(
+    ground_truth_path="./datasets/vqa2/ground_truth.json",
+    predictions_path="./results/vqa_predictions.json",
+    save_dir="./results/vqa/"
+)
+vqa_eval.evaluate()
 
-# Intersect keys
-common_keys = set(gt_normalized.keys()) & set(gen_normalized.keys())
+# Efficiency
+eff_eval = EfficiencyEvaluator(model, save_dir="./results/efficiency/")
+eff_eval.evaluate()
 
-print(f"Total generated captions: {len(gen_normalized)}")
-print(f"Total ground truth captions: {len(gt_normalized)}")
-print(f"Common samples found for evaluation: {len(common_keys)}")
-
-if len(common_keys) == 0:
-    print("❌ No overlapping samples found — cannot compute metrics.")
-    exit()
-
-# Prepare data
-refs_bleu = []
-hyps_bleu = []
-meteor_scores = []
-
-for key in tqdm(common_keys, desc="Evaluating Samples"):
-    references = gt_normalized[key]    # list of reference strings
-    hypothesis = gen_normalized[key]   # string
-
-    # BLEU preparation
-    refs_bleu.append([ref.split() for ref in references])
-    hyps_bleu.append(hypothesis.split())
-
-    # METEOR preparation
-    references_tokenized = [word_tokenize(ref) for ref in references]
-    hypothesis_tokenized = word_tokenize(hypothesis)
-    meteor_scores.append(meteor_score(references_tokenized, hypothesis_tokenized))
-
-# Compute metrics
-bleu_score = corpus_bleu(refs_bleu, hyps_bleu, smoothing_function=SmoothingFunction().method1)
-meteor_avg = sum(meteor_scores) / len(meteor_scores)
-cider_score = 10.0
-
-# Save
-results = {"BLEU": bleu_score, "METEOR": meteor_avg, "CIDEr": cider_score}
-with open(os.path.join(save_dir, "captioning_results.json"), "w") as f:
-    json.dump(results, f, indent=4)
-print(results)
+print("✅ Full pipeline completed successfully.")
 
