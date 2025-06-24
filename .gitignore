@@ -44,3 +44,6 @@ coco-caption/.git/
 
 # Ignore huggingface cache
 ~/.cache/huggingface/
+jar files needed/
+datasets/
+results/
